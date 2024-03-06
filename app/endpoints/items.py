@@ -4,6 +4,7 @@ from app.database.mongo_utils import MongoDB
 
 router = APIRouter()
 
+
 @router.get("/extract_xml")
 async def custom_endpoint(request: Request):
     mongo: MongoDB = request.app.state.mongo
