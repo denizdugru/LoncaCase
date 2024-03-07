@@ -11,7 +11,7 @@ xml_extractor = Extractor()
 
 
 @router.get("/extract_xml")
-async def custom_endpoint(file_name: str):
+async def extract_xml(file_name: str):
     try:
         result = xml_extractor.extract(file_name)
         return {"result": "Successfully created products..."}

@@ -2,12 +2,16 @@ from datetime import datetime
 from typing import Union
 import re
 import os
+import logging
 
 from app.database.mongo_odm import Product
 from app.configs.config import InternalConfig
 
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
+
+
+logger = logging.getLogger(__name__)
 
 
 class Extractor:
@@ -27,8 +31,10 @@ class Extractor:
 
                 if match:
                     extracted_text = match.group(1)
+                    logger.info("Extracted the sample size successfully")
                     return extracted_text
-        except:
+        except Exception as exc:
+            logger.warning(f"Couldn't extract the sample size... :: {exc}")
             return None
 
     def _extract_from_description(self, description_data: str) -> dict:
@@ -60,7 +66,7 @@ class Extractor:
                     info_dict[key.strip()] = value.strip()
                 else:
                     info_dict["additional_info"] = info_dict["additional_info"] + [item]
-
+            logger.info("Extracted the description successfully")
             return info_dict
         except Exception as exc:
             raise TypeError(
@@ -151,7 +157,7 @@ class Extractor:
                 "product_type": product_details.get("ProductType", "N/A"),
                 "quantity": int(product_details.get("Quantity", "N/A")),
                 "sample_size": self._extract_size_info_from_extras(
-                    description_dict.get("additional_info", "N/A")
+                    description_dict.get("additional_info", None)
                 ),
                 "series": product_details.get("Series", "N/A"),
                 "status": (
@@ -172,6 +178,9 @@ class Extractor:
                 "updatedAt": formatted_now,
                 "file_path": xml_path,
             }
+            logger.info(
+                f"Created the product document successfully for {product.get('ProductId', 'N/A')}"
+            )
             products_list.append(product_dict)
 
         return products_list
@@ -197,7 +206,9 @@ class Extractor:
                 if not matched_documents:
                     mongo_product_doc = Product(**product_doc)
                     mongo_product_doc.save()
-
+                logger.info(
+                    f"XML extraction completed successfully for {product_doc['stock_code']}..."
+                )
         except Exception as exc:
             raise TypeError(f"Error while saving documents to db... :: {exc}")
 
@@ -219,6 +230,7 @@ class Extractor:
                 os.path.join(InternalConfig.ASSETS_DIR_PATH, file_name)
             )
             self._save_product_docs_to_mongo(products_list)
+            logger.info("XML extraction completed successfully...")
         else:
             raise TypeError(f"The requested file is not in XML format...")
 
@@ -226,14 +238,19 @@ class Extractor:
         """
         This function checks the directory for the unrecognized xml files and do the extraction accordingly
         """
-        directory_list = os.listdir(InternalConfig.ASSETS_DIR_PATH)
-        xml_paths = [
-            os.path.join(InternalConfig.ASSETS_DIR_PATH, file)
-            for file in directory_list
-            if file.endswith(".xml")
-        ]
-        unique_names = Product.objects.distinct("file_path")
-        unrecognized_files_list = list(set(xml_paths) - set(unique_names))
-        for file_path in unrecognized_files_list:
-            product_list = self._extract_data_from_xml_file(file_path)
-            self._save_product_docs_to_mongo(product_list)
+
+        try:
+            directory_list = os.listdir(InternalConfig.ASSETS_DIR_PATH)
+            xml_paths = [
+                os.path.join(InternalConfig.ASSETS_DIR_PATH, file)
+                for file in directory_list
+                if file.endswith(".xml")
+            ]
+            unique_names = Product.objects.distinct("file_path")
+            unrecognized_files_list = list(set(xml_paths) - set(unique_names))
+            for file_path in unrecognized_files_list:
+                product_list = self._extract_data_from_xml_file(file_path)
+                self._save_product_docs_to_mongo(product_list)
+            logger.info("Periodic XML extraction ran successfully...")
+        except Exception as exc:
+            logger.error(f"Error while running periodic extraction :: {exc}")
