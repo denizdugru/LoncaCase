@@ -1,26 +1,17 @@
 from fastapi import FastAPI
 from app.endpoints.items import router as items_router
-from app.database.mongo_utils import MongoDB
+from mongoengine import connect
 
 app = FastAPI()
 
 # MongoDB connection settings
-MONGO_URI = "mongodb://localhost:27017"
+MONGO_URI = "mongodb://localhost:27017/test"
 
 # Create MongoDB instance
-mongo = MongoDB(MONGO_URI)
+connect(host=MONGO_URI)
 
 # Include router
 app.include_router(items_router, prefix="/api", tags=["items"])
-
-# Injection of mongo client
-app.state.mongo = mongo
-
-
-# Define shutdown event handler
-@app.on_event("shutdown")
-async def shutdown_event():
-    await mongo.close_connection()
 
 
 if __name__ == "__main__":
