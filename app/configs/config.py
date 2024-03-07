@@ -31,3 +31,4 @@ def configure_logging():
 class InternalConfig:
     MONGO_HOST = os.environ.get("MONGO_HOST", "localhost")
     ASSETS_DIR_PATH = os.environ.get("ASSETS_DIR_PATH", "assets")
+    MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY", None)

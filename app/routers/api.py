@@ -2,12 +2,15 @@ import os
 
 from app.configs.config import InternalConfig
 from app.logic._extractor import Extractor
+from app.logic._fuzzy_extractor import FuzzyLLMKeyFinder, LLMXMLParser
 
 from fastapi import APIRouter, HTTPException, File, UploadFile
 from fastapi_utils.tasks import repeat_every
 
 router = APIRouter()
 xml_extractor = Extractor()
+fuzzy_llm_key_finder = FuzzyLLMKeyFinder()
+llm_xml_parser = LLMXMLParser()
 
 
 @router.get("/extract_xml")
@@ -39,3 +42,27 @@ async def upload_xml_file(file: UploadFile = File(...)):
     ) as buffer:
         buffer.write(await file.read())
     return {"filename": file.filename}
+
+
+@router.get("/fuzzy_keyword_finder")
+async def fuzzy_keyword_finder(keyword: str, token: str):
+    try:
+
+        result = fuzzy_llm_key_finder.analyze_key(keyword, token)
+
+        return {"result": result}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=404, detail=f"Error while extracting XML data... :: {exc}"
+        )
+
+
+@router.get("/llm_xml_parser")
+def llm_xml_parser_func(token: str):
+    try:
+        result = llm_xml_parser.parse_xml(token)
+        return {"result": result}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=404, detail=f"Error while extracting XML data... :: {exc}"
+        )
