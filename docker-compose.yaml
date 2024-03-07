@@ -1,0 +1,22 @@
+version: '3'
+services:
+  mongo-container:
+    container_name: mongo_container
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    command: mongod
+  app:
+    container_name: app_container
+    image: python:3.9
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      # Add any other environment variables from .env file here
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo-container
+    command: ["python", "main.py"]
