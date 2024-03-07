@@ -13,7 +13,7 @@ MONGO_URI = f"mongodb://{InternalConfig.MONGO_HOST}:27017/test"
 connect(host=MONGO_URI)
 
 # Include router
-app.include_router(router, prefix="/api", tags=["items"])
+app.include_router(router, prefix="/api", tags=["api"])
 
 
 if __name__ == "__main__":
