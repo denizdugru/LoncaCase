@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Union
 import re
 import os
 
@@ -10,7 +11,16 @@ from bs4 import BeautifulSoup
 
 
 class Extractor:
-    def _extract_size_info_from_extras(self, info_list):
+    def _extract_size_info_from_extras(self, info_list: list) -> Union[str, None]:
+        """
+        This function extracts the sample size data from the given list of strings
+
+        Args:
+            - info_list : list
+        Returns:
+            - extracted_text : str (sample size info ex. S/36)
+            - None (indicating there is no info)
+        """
         try:
             for item in info_list:
                 match = re.search(r"ürün(.*?)bedendir", item)
@@ -22,6 +32,19 @@ class Extractor:
             return None
 
     def _extract_from_description(self, description_data: str) -> dict:
+        """
+        This function extracts the description data of the provided XML sample by splitting the <li> tags and inside splitting the ":"
+        the additional data left without ":" added to a list of strings as additional_info
+
+        Args:
+            - description_data: str (a line of data inside the CDATA block, html features and tags are here)
+
+        Returns:
+            - info_dict : dict (An info dict including the values in the CDATA block
+
+        Raises:
+            - TypeError with the exception
+        """
         try:
             soup = BeautifulSoup(description_data, "html.parser")
 
@@ -46,8 +69,18 @@ class Extractor:
 
     def _extract_data_from_xml_file(
         self,
-        xml_path,
-    ):
+        xml_path: str,
+    ) -> list:
+        """
+        This function extracts all the data to a dict as declared
+
+        Args:
+            xml_path : str (File path of the XML file)
+
+        Returns:
+            products_list : List[Dict] (list of the documents to be written to mongo)
+        """
+
         tree = ET.parse(xml_path)
         root = tree.getroot()
 
@@ -143,7 +176,19 @@ class Extractor:
 
         return products_list
 
-    def _save_product_docs_to_mongo(self, products_list):
+    def _save_product_docs_to_mongo(self, products_list: list) -> None:
+        """
+        This funtion saves the documents to mongo using mongoengine odm
+
+        Args:
+            - product_list: List[Dict] (list of dictionary of products)
+
+        Returns:
+            - None
+
+        Raises:
+            -  TypeError indicating something is wrong with the exception
+        """
         try:
             for product_doc in products_list:
                 matched_documents = Product.objects(
@@ -157,6 +202,18 @@ class Extractor:
             raise TypeError(f"Error while saving documents to db... :: {exc}")
 
     def extract(self, file_name):
+        """
+        This is the main function of extracting xml file
+
+        Args:
+            - file_name : str (only the name of the file)
+
+        Returns:
+            - None
+
+        Raises:
+            - TypeError indicating something is wrong with the exception
+        """
         if file_name.endswith(".xml"):
             products_list = self._extract_data_from_xml_file(
                 os.path.join(InternalConfig.ASSETS_DIR_PATH, file_name)
@@ -166,6 +223,9 @@ class Extractor:
             raise TypeError(f"The requested file is not in XML format...")
 
     def extract_periodically(self):
+        """
+        This function checks the directory for the unrecognized xml files and do the extraction accordingly
+        """
         directory_list = os.listdir(InternalConfig.ASSETS_DIR_PATH)
         xml_paths = [
             os.path.join(InternalConfig.ASSETS_DIR_PATH, file)
