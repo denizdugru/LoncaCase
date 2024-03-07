@@ -27,3 +27,4 @@ class Product(Document):
     product_measurements = StringField()
     createdAt = StringField(required=True)
     updatedAt = StringField(required=True)
+    file_path = StringField(required=True)

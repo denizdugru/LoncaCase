@@ -1,10 +1,12 @@
 from datetime import datetime
 import re
+import os
+
+from app.database.mongo_utils import Product
+from app.configs.config import InternalConfig
 
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
-
-from app.database.mongo_utils import Product
 
 
 class Extractor:
@@ -71,7 +73,7 @@ class Extractor:
                     description.text.strip()
                 )
 
-            # Make a dynamic solution for Ürün Ölçümleri
+            # Make a dynamic solution for Ürün Ölçümleri case
             def return_valid_key(_key, _dict):
                 for __key in _dict.keys():
                     if _key in __key:
@@ -79,25 +81,39 @@ class Extractor:
                     else:
                         None
 
+            # Converting float to handle the cases like "2,24"
+            def convert_to_float(_variable):
+                try:
+                    if "," in _variable or "." in _variable:
+                        return float(_variable.replace(",", "."))
+                    elif isinstance(_variable, int):
+                        return float(_variable)
+                    elif isinstance(_variable, str):
+                        return float(_variable)
+                    else:
+                        return _variable
+                except Exception as exc:
+                    raise TypeError(
+                        f"Error while converting variable:{_variable} :: {exc}"
+                    )
+
             now = datetime.now()
             formatted_now = now.strftime("%Y-%m-%dT%H:%M:%S.%f+00:0")
             product_dict = {
                 "stock_code": product.get("ProductId", "N/A"),
                 "color": [product_details.get("Color", "N/A")],
-                "discounted_price": float(
-                    product_details.get("DiscountedPrice", "N/A").replace(",", ".")
+                "discounted_price": convert_to_float(
+                    product_details.get("DiscountedPrice", "N/A")
                 ),
                 "images": image_paths,
                 "is_discounted": (
                     True
-                    if float(
-                        product_details.get("DiscountedPrice", 0).replace(",", ".")
-                    )
-                    < float(product_details.get("Price", 0).replace(",", "."))
+                    if convert_to_float(product_details.get("DiscountedPrice", 0))
+                    < convert_to_float(product_details.get("Price", 0))
                     else False
                 ),
                 "name": product.get("Name", "N/A"),
-                "price": float(product_details.get("Price", "N/A").replace(",", ".")),
+                "price": convert_to_float(product_details.get("Price", "N/A")),
                 "price_unit": "USD",  # Couldn't find any logical way to get the unit.
                 "product_type": product_details.get("ProductType", "N/A"),
                 "quantity": int(product_details.get("Quantity", "N/A")),
@@ -121,20 +137,43 @@ class Extractor:
                 ),
                 "createdAt": formatted_now,
                 "updatedAt": formatted_now,
+                "file_path": xml_path,
             }
             products_list.append(product_dict)
 
         return products_list
 
     def _save_product_docs_to_mongo(self, products_list):
-        for product_doc in products_list:
-            matched_documents = Product.objects(stock_code=product_doc["stock_code"])
-            if not matched_documents:
-                mongo_product_doc = Product(**product_doc)
-                mongo_product_doc.save()
+        try:
+            for product_doc in products_list:
+                matched_documents = Product.objects(
+                    stock_code=product_doc["stock_code"]
+                )
+                if not matched_documents:
+                    mongo_product_doc = Product(**product_doc)
+                    mongo_product_doc.save()
 
-        return {"status": True}
+        except Exception as exc:
+            raise TypeError(f"Error while saving documents to db... :: {exc}")
 
-    def extract(self):
-        products_list = self._extract_data_from_xml_file("assets/lonca-sample.xml")
-        status = self._save_product_docs_to_mongo(products_list)
+    def extract(self, file_name):
+        if file_name.endswith(".xml"):
+            products_list = self._extract_data_from_xml_file(
+                os.path.join(InternalConfig.ASSETS_DIR_PATH, file_name)
+            )
+            self._save_product_docs_to_mongo(products_list)
+        else:
+            raise TypeError(f"The requested file is not in XML format...")
+
+    def extract_periodically(self):
+        directory_list = os.listdir(InternalConfig.ASSETS_DIR_PATH)
+        xml_paths = [
+            os.path.join(InternalConfig.ASSETS_DIR_PATH, file)
+            for file in directory_list
+            if file.endswith(".xml")
+        ]
+        unique_names = Product.objects.distinct("file_path")
+        unrecognized_files_list = list(set(xml_paths) - set(unique_names))
+        for file_path in unrecognized_files_list:
+            product_list = self._extract_data_from_xml_file(file_path)
+            self._save_product_docs_to_mongo(product_list)

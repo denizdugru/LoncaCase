@@ -1,3 +1,5 @@
+from app.configs.config import InternalConfig
+
 from fastapi import FastAPI
 from app.endpoints.items import router as items_router
 from mongoengine import connect
@@ -5,7 +7,7 @@ from mongoengine import connect
 app = FastAPI()
 
 # MongoDB connection settings
-MONGO_URI = "mongodb://localhost:27017/test"
+MONGO_URI = f"mongodb://{InternalConfig.MONGO_HOST}:27017/test"
 
 # Create MongoDB instance
 connect(host=MONGO_URI)
