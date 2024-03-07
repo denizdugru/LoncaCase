@@ -9,6 +9,7 @@ repos:
       - id: check-added-large-files
       - id: detect-private-key
       - id: name-tests-test
+      - id: debug-statements
   - repo: https://github.com/psf/black
     rev: 24.2.0
     hooks:
