@@ -37,11 +37,16 @@ async def periodic_xml_check() -> None:
 
 @router.post("/upload_xml_file")
 async def upload_xml_file(file: UploadFile = File(...)):
-    with open(
-        os.path.join(InternalConfig.ASSETS_DIR_PATH, file.filename), "wb"
-    ) as buffer:
-        buffer.write(await file.read())
-    return {"filename": file.filename}
+    try:
+        with open(
+            os.path.join(InternalConfig.ASSETS_DIR_PATH, file.filename), "wb"
+        ) as buffer:
+            buffer.write(await file.read())
+        return {"filename": file.filename}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=404, detail=f"Error while uploading XML file... :: {exc}"
+        )
 
 
 @router.get("/fuzzy_keyword_finder")

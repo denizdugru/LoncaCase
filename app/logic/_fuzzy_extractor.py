@@ -1,6 +1,7 @@
 import os
+import logging
 
-from app.configs.config import InternalConfig
+from app.configs.config import InternalConfig, configure_logging
 from app.utils.decyhper_utils import Cipher
 
 import xml.etree.ElementTree as ET
@@ -8,11 +9,28 @@ from langchain_mistralai.chat_models import ChatMistralAI
 from langchain import PromptTemplate
 from langchain.chains import LLMChain
 
+configure_logging()
+logger = logging.getLogger(__name__)
+
 
 class LLMMixin:
-    def get_mistral_model(self, token):
-        decrypted_api_key = Cipher(token).decrypt(InternalConfig.MISTRAL_API_KEY)
-        return ChatMistralAI(mistral_api_key=decrypted_api_key, model="mistral-small")
+    def get_mistral_model(self, token: str):
+        """
+        This function decrypts the api key with the provided token, and returns the model
+
+        Args:
+            - token : str
+
+        Returns:
+            ChatMistralAI (model to perform LLM)
+        """
+        try:
+            decrypted_api_key = Cipher(token).decrypt(InternalConfig.MISTRAL_API_KEY)
+            return ChatMistralAI(
+                mistral_api_key=decrypted_api_key, model="mistral-small"
+            )
+        except Exception as exc:
+            logger.error(f"Getting model failed... :: {exc}")
 
 
 class FuzzyLLMKeyFinder(LLMMixin):
@@ -43,18 +61,36 @@ class FuzzyLLMKeyFinder(LLMMixin):
         Given word : "{keyword}", your answer :
         """
 
-    def analyze_key(self, keyword, token):
-        model = self.get_mistral_model(token)
-        prompt_template = PromptTemplate(
-            input_variables=["keyword"],
-            template=self.template,
-        )
-        chain = LLMChain(llm=model, prompt=prompt_template)
-        answer = chain.run(keyword)
-        if "None" in answer:
-            return None
-        else:
-            return answer.replace("* ", "").replace(" *", "").replace("*", "")
+    def analyze_key(self, keyword: str, token: str) -> str:
+        """
+        This function resolves the keyword to get a more meaningful one using Mistral model with the prompt template defined at init function, its an experimental project
+
+        Args:
+            - keyword : str
+            - token : str (the token to decrypt secret api key)
+
+        Returns:
+            - answer : str (the beautified output)
+        """
+        try:
+            model = self.get_mistral_model(token)
+            prompt_template = PromptTemplate(
+                input_variables=["keyword"],
+                template=self.template,
+            )
+            logger.info(
+                "Waiting for an output from the model, this might take a while..."
+            )
+            chain = LLMChain(llm=model, prompt=prompt_template)
+            answer = chain.run(keyword)
+            if "None" in answer:
+                return None
+            else:
+                return (
+                    answer.replace("* ", "").replace(" *", "").replace("*", "")
+                )  # workaround to get a more beautiful output
+        except Exception as exc:
+            logger.error(f"Error occured while gettin the result from model :: {exc}")
 
 
 class LLMXMLParser(LLMMixin):
@@ -146,17 +182,36 @@ class LLMXMLParser(LLMMixin):
         Your answer as a Python list :
         """
 
-    def parse_xml(self, token):
-        model = self.get_mistral_model(token)
-        tree = ET.parse(
-            os.path.join(InternalConfig.ASSETS_DIR_PATH, "lonca-sample.xml")
-        )
-        root = tree.getroot()
-        xml_string = ET.tostring(root, encoding="utf8", method="xml").decode()
-        prompt_template = PromptTemplate(
-            input_variables=["xml_string"],
-            template=self.template,
-        )
-        chain = LLMChain(llm=model, prompt=prompt_template)
-        answer = chain.run(xml_string)
-        return answer
+    def parse_xml(self, token: str) -> list:
+        """
+        This function gets the mistral model via decrypting the secret api key and returns a more meaningful dict regarding the template
+
+        Args:
+            - token : str
+
+        Returns:
+            - a list of dict containing the data
+        """
+        try:
+            model = self.get_mistral_model(token)
+            # Read the XML from assets folder
+            tree = ET.parse(
+                os.path.join(InternalConfig.ASSETS_DIR_PATH, "lonca-sample.xml")
+            )
+            root = tree.getroot()
+            # Convert XML file to string
+            xml_string = ET.tostring(root, encoding="utf8", method="xml").decode()
+            prompt_template = PromptTemplate(
+                input_variables=["xml_string"],
+                template=self.template,
+            )
+            logger.info(
+                "Waiting for an output from the model, this might take a while..."
+            )
+            chain = LLMChain(llm=model, prompt=prompt_template)
+            answer = chain.run(xml_string)
+            return answer
+        except Exception as exc:
+            logger.error(
+                f"Error occured while getting the answer for LLM parser... :: {exc}"
+            )

@@ -5,12 +5,12 @@ import os
 import logging
 
 from app.database.mongo_odm import Product
-from app.configs.config import InternalConfig
+from app.configs.config import InternalConfig, configure_logging
 
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 
-
+configure_logging()
 logger = logging.getLogger(__name__)
 
 
