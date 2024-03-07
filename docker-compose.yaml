@@ -8,7 +8,7 @@ services:
     command: mongod
   app:
     container_name: app_container
-    image: python:3.9
+    image: python:3.8
     working_dir: /app
     volumes:
       - ./assets:/app/assets
@@ -25,7 +25,7 @@ services:
       - sh
       - -c
       - |
-        pip install -r /app/reqs/requirements.txt
+        pip install -r /app/reqs/requirements.txt --use-deprecated=legacy-resolver
         python main.py
 
 volumes:
