@@ -2,7 +2,7 @@ from datetime import datetime
 import re
 import os
 
-from app.database.mongo_utils import Product
+from app.database.mongo_odm import Product
 from app.configs.config import InternalConfig
 
 import xml.etree.ElementTree as ET

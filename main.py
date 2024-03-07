@@ -1,7 +1,7 @@
 from app.configs.config import InternalConfig
 
 from fastapi import FastAPI
-from app.endpoints.items import router as items_router
+from app.routers.api import router
 from mongoengine import connect
 
 app = FastAPI()
@@ -13,7 +13,7 @@ MONGO_URI = f"mongodb://{InternalConfig.MONGO_HOST}:27017/test"
 connect(host=MONGO_URI)
 
 # Include router
-app.include_router(items_router, prefix="/api", tags=["items"])
+app.include_router(router, prefix="/api", tags=["items"])
 
 
 if __name__ == "__main__":
