@@ -36,7 +36,7 @@ python3 -m venv <your_env_file>
 Activate the virtual environment and install the requirements:
 ```bash
 source <your_env_file>/bin/activate
-pip install -r reqs/requirements.txt
+pip install -r reqs/requirements.txt --use-deprecated=legacy-resolver
 ```
 
 Note: Check the [documentation](https://docs.python.org/3/library/venv.html) for other operating systems.
@@ -44,6 +44,17 @@ Note: Check the [documentation](https://docs.python.org/3/library/venv.html) for
 ## Usage
 There are three different methods and usages.
 
+### Running the Service in Docker Mode
+
+1. To start the Docker containers, run:
+```bash
+docker-compose up -d
+```
+2. After a short period, the "app_container" and "mongo_container" will be in the running state. To check, use the command:
+
+```bash
+docker ps
+```
 
 ### Running the service locally
 
@@ -60,18 +71,6 @@ set -a; source .env.local; set +a; python main.py
 docker ps
 ```
 
-
-### Running the Service in Docker Mode
-
-1. To start the Docker containers, run:
-```bash
-docker-compose up -d
-```
-2. After a short period, the "app_container" and "mongo_container" will be in the running state. To check, use the command:
-
-```bash
-docker ps
-```
 
 
 ### Running the Periodic Task without FastAPI
